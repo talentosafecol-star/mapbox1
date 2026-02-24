@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Incidentes de Seguridad - Medellín</title>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --sidebar-bg: rgba(255, 255, 255, 0.95);
+            --incident-bg: #f8f9fa;
+        }
+
+        .dark-mode {
+            --bg-color: #1a1a2e;
+            --text-color: #e4e4e4;
+            --card-bg: #16213e;
+            --border-color: #0f3460;
+            --sidebar-bg: rgba(22, 33, 62, 0.95);
+            --incident-bg: #1a1a2e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .sidebar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .sidebar {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .sidebar h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: var(--incident-bg);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .legend-item:hover {
+            transform: translateX(5px);
+        }
+
+        .legend-item.active {
+            box-shadow: 0 0 0 2px #4a90d9;
+        }
+
+        .legend-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .legend-icon.riña { background: #e74c3c; }
+        .legend-icon.hurto { background: #f39c12; }
+        .legend-icon.homicidio { background: #2c3e50; }
+        .legend-icon.violencia { background: #9b59b6; }
+
+        .heatmap-toggle {
+            margin-top: 15px;
+            padding: 12px;
+            background: var(--incident-bg);
+            border-radius: 8px;
+        }
+
+        .form-check-label {
+            cursor: pointer;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--incident-bg);
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-count {
+            font-weight: bold;
+            color: #4a90d9;
+        }
+
+        .mapboxgl-popup-content {
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 200px;
+        }
+
+        .dark-mode .mapboxgl-popup-content {
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .popup-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .popup-type {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: white;
+        }
+
+        .popup-desc {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .popup-date {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1002;
+            background: var(--card-bg);
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top-color: #4a90d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 10px;">Cargando mapa...</p>
+    </div>
+
+    <button class="theme-toggle" id="themeToggle" title="Cambiar tema">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <div class="sidebar">
+        <h2><i class="fas fa-shield-alt"></i> Seguridad Medellín</h2>
+        
+        <div class="legend">
+            <div class="legend-item active" data-type="riña">
+                <div class="legend-icon riña"><i class="fas fa-fist-raised"></i></div>
+                <span>Riñas</span>
+            </div>
+            <div class="legend-item active" data-type="hurto">
+                <div class="legend-icon hurto"><i class="fas fa-user-secret"></i></div>
+                <span>Hurto</span>
+            </div>
+            <div class="legend-item active" data-type="homicidio">
+                <div class="legend-icon homicide"><i class="fas fa-skull"></i></div>
+                <span>Homicidio</span>
+            </div>
+            <div class="legend-item active" data-type="violencia">
+                <div class="legend-icon violencia"><i class="fas fa-house-user"></i></div>
+                <span>Violencia Intrafamiliar</span>
+            </div>
+        </div>
+
+        <div class="heatmap-toggle">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="heatmapToggle">
+                <label class="form-check-label" for="heatmapToggle">Mostrar Heatmap de Densidad</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" id="markersToggle" checked>
+                <label class="form-check-label" for="markersToggle">Mostrar Marcadores</label>
+            </div>
+        </div>
+
+        <div class="stats">
+            <h6><i class="fas fa-chart-bar"></i> Estadísticas</h6>
+            <div class="stat-item">
+                <span><i class="fas fa-fist-raised" style="color: #e74c3c;"></i> Riñas</span>
+                <span class="stat-count" id="count-riña">0</span>
+            </div>
+            <div class="stat-item">
+                <span><i class="fas fa-user-secret" style="color: #f39c12;"></i> Hurtos</span>
+                <span class="stat-count" id="count-hurto">0</span>
+            </div>
+            <div class="stat-item">
+                <span><i class="fas fa-skull" style="color: #2c3e50;"></i> Homicidios</span>
+                <span class="stat-count" id="count-homicidio">0</span>
+            </div>
+            <div class="stat-item">
+                <span><i class="fas fa-house-user" style="color: #9b59b6;"></i> Violencia Familiar</span>
+                <span class="stat-count" id="count-violencia">0</span>
+            </div>
+            <div class="stat-item" style="border-top: 2px solid var(--border-color); margin-top: 5px; padding-top: 10px;">
+                <span><strong>Total</strong></span>
+                <span class="stat-count" id="count-total">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+
+        const incidentes = [
+            { id: 1, tipo: 'riña', lat: 6.2476, lng: -75.5658, descripcion: 'Riña entre ciudadanos en vía pública', direccion: 'Carrera 43A #1-50, El Poblado', fecha: '2024-01-15', gravedad: 3 },
+            { id: 2, tipo: 'hurto', lat: 6.2084, lng: -75.5745, descripcion: 'Hurto a mano armada en zona comercial', direccion: 'Carrera 37 #8A-37, Laureles', fecha: '2024-01-14', gravedad: 4 },
+            { id: 3, tipo: 'homicidio', lat: 6.2534, lng: -75.5671, descripcion: 'Homicidio por arma de fuego', direccion: 'Calle 10 #43A-23, Manila', fecha: '2024-01-13', gravedad: 5 },
+            { id: 4, tipo: 'violencia', lat: 6.2654, lng: -75.5698, descripcion: 'Violencia intrafamiliar reportada', direccion: 'Carrera 80 #45-32, Belalcázar', fecha: '2024-01-12', gravedad: 4 },
+            { id: 5, tipo: 'riña', lat: 6.2295, lng: -75.5837, descripcion: 'Riña en establecimiento público', direccion: 'Carrera 52 #53-26, Estadio', fecha: '2024-01-11', gravedad: 2 },
+            { id: 6, tipo: 'hurto', lat: 6.2442, lng: -75.5792, descripcion: 'Hurto de vehículo en estacionamiento', direccion: 'Carrera 65 #45-10, La América', fecha: '2024-01-10', gravedad: 3 },
+            { id: 7, tipo: 'homicidio', lat: 6.2671, lng: -75.5891, descripcion: 'Homicidio por ajuste de cuentas', direccion: 'Calle 93 #71-25, San Javier', fecha: '2024-01-09', gravedad: 5 },
+            { id: 8, tipo: 'violencia', lat: 6.2356, lng: -75.5589, descripcion: 'Violencia intrafamiliar con lesionados', direccion: 'Carrera 28 #35-48, Buenos Aires', fecha: '2024-01-08', gravedad: 5 },
+            { id: 9, tipo: 'riña', lat: 6.2567, lng: -75.5923, descripcion: 'Riña entre pandillas', direccion: 'Carrera 88 #32-45, Villa Hermosa', fecha: '2024-01-07', gravedad: 4 },
+            { id: 10, tipo: 'hurto', lat: 6.2123, lng: -75.5712, descripcion: 'Hurto con violencia a transeúnte', direccion: 'Carrera 43 #5-23, Florida', fecha: '2024-01-06', gravedad: 4 },
+            { id: 11, tipo: 'riña', lat: 6.2789, lng: -75.6012, descripcion: 'Riña enbarrio popular', direccion: 'Calle 105 #78-34, Doce de Octubre', fecha: '2024-01-05', gravedad: 3 },
+            { id: 12, tipo: 'violencia', lat: 6.2456, lng: -75.5534, descripcion: 'Violencia intrafamiliar reportada', direccion: 'Carrera 15 #28-56, Prado', fecha: '2024-01-04', gravedad: 3 },
+            { id: 13, tipo: 'hurto', lat: 6.2612, lng: -75.5834, descripcion: 'Hurto a residencia', direccion: 'Carrera 70 #55-12, San Joaquín', fecha: '2024-01-03', gravedad: 3 },
+            { id: 14, tipo: 'homicidio', lat: 6.2198, lng: -75.5956, descripcion: 'Homicidio por riña', direccion: 'Calle 62 #84-23, Nutibara', fecha: '2024-01-02', gravedad: 5 },
+            { id: 15, tipo: 'riña', lat: 6.2889, lng: -75.5645, descripcion: 'Riña en discoteca', direccion: 'Carrera 50 #71-45, Robledo', fecha: '2024-01-01', gravedad: 2 },
+            { id: 16, tipo: 'hurto', lat: 6.2345, lng: -75.5678, descripcion: 'Hurto en transporte público', direccion: 'Carrera 45 #20-30, Villa', fecha: '2023-12-31', gravedad: 2 },
+            { id: 17, tipo: 'violencia', lat: 6.2512, lng: -75.5812, descripcion: 'Violencia intrafamiliar menores involucrados', direccion: 'Carrera 68 #48-23, Calasanz', fecha: '2023-12-30', gravedad: 5 },
+            { id: 18, tipo: 'homicidio', lat: 6.2698, lng: -75.5712, descripcion: 'Homicidio doloso zona urbana', direccion: 'Calle 55 #82-12, Boyacá', fecha: '2023-12-29', gravedad: 5 },
+            { id: 19, tipo: 'riña', lat: 6.2012, lng: -75.5789, descripcion: 'Riña por disputa territorial', direccion: 'Carrera 82 #28-45, Castilla', fecha: '2023-12-28', gravedad: 3 },
+            { id: 20, tipo: 'hurto', lat: 6.2578, lng: -75.5567, descripcion: 'Hurto de bicicleta', direccion: 'Carrera 32 #12-23, La Candelaria', fecha: '2023-12-27', gravedad: 1 },
+            { id: 21, tipo: 'riña', lat: 6.2412, lng: -75.5934, descripcion: 'Riña con armas blancas', direccion: 'Carrera 86 #35-67, Enciso', fecha: '2023-12-26', gravedad: 4 },
+            { id: 22, tipo: 'violencia', lat: 6.2234, lng: -75.5612, descripcion: 'Violencia intrafamiliar con arma', direccion: 'Calle 38 #22-45, Buenos Aires', fecha: '2023-12-25', gravedad: 5 },
+            { id: 23, tipo: 'hurto', lat: 6.2723, lng: -75.5789, descripcion: 'Hurto a comercio', direccion: 'Carrera 65 #57-34, Guayabal', fecha: '2023-12-24', gravedad: 2 },
+            { id: 24, tipo: 'homicidio', lat: 6.2598, lng: -75.6098, descripcion: 'Homicidio en zona de conflict', direccion: 'Calle 95 #76-23, San Javier', fecha: '2023-12-23', gravedad: 5 },
+            { id: 25, tipo: 'riña', lat: 6.2145, lng: -75.5876, descripcion: 'Riña grupal', direccion: 'Carrera 78 #42-12, Tricentenario', fecha: '2023-12-22', gravedad: 3 }
+        ];
+
+        const colors = {
+            'riña': '#e74c3c',
+            'hurto': '#f39c12',
+            'homicidio': '#2c3e50',
+            'violencia': '#9b59b6'
+        };
+
+        const icons = {
+            'riña': 'fa-fist-raised',
+            'hurto': 'fa-user-secret',
+            'homicidio': 'fa-skull',
+            'violencia': 'fa-house-user'
+        };
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [-75.5755, 6.2476],
+            zoom: 12
+        });
+
+        map.on('load', () => {
+            document.getElementById('loading').style.display = 'none';
+
+            map.addSource('incidentes', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: incidentes.map(inc => ({
+                        type: 'Feature',
+                        properties: {
+                            id: inc.id,
+                            tipo: inc.tipo,
+                            descripcion: inc.descripcion,
+                            direccion: inc.direccion,
+                            fecha: inc.fecha,
+                            gravedad: inc.gravedad
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [inc.lng, inc.lat]
+                        }
+                    }))
+                }
+            });
+
+            map.addSource('incidentes-heat', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: incidentes.map(inc => ({
+                        type: 'Feature',
+                        properties: {
+                            tipo: inc.tipo,
+                            gravedad: inc.gravedad
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [inc.lng, inc.lat]
+                        }
+                    }))
+                }
+            });
+
+            map.addLayer({
+                id: 'heatmap-layer',
+                type: 'heatmap',
+                source: 'incidentes-heat',
+                paint: {
+                    'heatmap-weight': ['interpolate', ['linear'], ['get', 'gravedad'], 1, 0.1, 5, 1],
+                    'heatmap-intensity': 1,
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0, 'rgba(0,0,255,0)',
+                        0.2, 'rgb(0,255,0)',
+                        0.4, 'rgb(255,255,0)',
+                        0.6, 'rgb(255,128,0)',
+                        0.8, 'rgb(255,0,0)',
+                        1, 'rgb(128,0,128)'
+                    ],
+                    'heatmap-radius': 30,
+                    'heatmap-opacity': 0.7
+                }
+            });
+
+            ['riña', 'hurto', 'homicidio', 'violencia'].forEach(tipo => {
+                map.addLayer({
+                    id: `marcadores-${tipo}`,
+                    type: 'circle',
+                    source: 'incidentes',
+                    filter: ['==', ['get', 'tipo'], tipo],
+                    paint: {
+                        'circle-radius': 12,
+                        'circle-color': colors[tipo],
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+
+                map.addLayer({
+                    id: `iconos-${tipo}`,
+                    type: 'symbol',
+                    source: 'incidentes',
+                    filter: ['==', ['get', 'tipo'], tipo],
+                    layout: {
+                        'icon-image': 'marker-15',
+                        'icon-size': 1,
+                        'text-field': ['get', 'tipo'],
+                        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                        'text-offset': [0, 1.5],
+                        'text-anchor': 'top'
+                    },
+                    paint: {
+                        'text-color': colors[tipo]
+                    }
+                });
+            });
+
+            map.on('click', 'marcadores-riña', (e) => showPopup(e, 'riña');
+            map.on('click', 'marcadores-hurto', (e) => showPopup(e, 'hurto'));
+            map.on('click', 'marcadores-homicidio', (e) => showPopup(e, 'homicidio'));
+            map.on('click', 'marcadores-violencia', (e) => showPopup(e, 'violencia'));
+
+            map.on('mouseenter', 'marcadores-riña', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'marcadores-riña', () => map.getCanvas().style.cursor = '');
+            map.on('mouseenter', 'marcadores-hurto', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'marcadores-hurto', () => map.getCanvas().style.cursor = '');
+            map.on('mouseenter', 'marcadores-homicidio', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'marcadores-homicidio', () => map.getCanvas().style.cursor = '');
+            map.on('mouseenter', 'marcadores-violencia', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'marcadores-violencia', () => map.getCanvas().style.cursor = '');
+
+            updateStats();
+        });
+
+        function showPopup(e, tipo) {
+            const props = e.features[0].properties;
+            const popup = new mapboxgl.Popup({ offset: 25 })
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <div class="popup-title">
+                        <span class="popup-type" style="background: ${colors[tipo]}">
+                            <i class="fas ${icons[tipo]}"></i> ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                        </span>
+                    </div>
+                    <div class="popup-desc"><i class="fas fa-info-circle"></i> ${props.descripcion}</div>
+                    <div class="popup-desc"><i class="fas fa-map-marker-alt"></i> ${props.direccion}</div>
+                    <div class="popup-date"><i class="fas fa-calendar"></i> ${props.fecha}</div>
+                    <div class="popup-date"><i class="fas fa-exclamation-triangle"></i> Gravedad: ${props.gravedad}/5</div>
+                `)
+                .addTo(map);
+        }
+
+        function updateStats() {
+            const counts = { riña: 0, hurto: 0, homicide: 0, violencia: 0 };
+            incidentes.forEach(inc => {
+                if (counts.hasOwnProperty(inc.tipo)) {
+                    counts[inc.tipo]++;
+                }
+            });
+
+            document.getElementById('count-riña').textContent = counts['riña'];
+            document.getElementById('count-hurto').textContent = counts['hurto'];
+            document.getElementById('count-homicidio').textContent = counts['homicidio'];
+            document.getElementById('count-violencia').textContent = counts['violencia'];
+            document.getElementById('count-total').textContent = incidentes.length;
+        }
+
+        document.querySelectorAll('.legend-item').forEach(item => {
+            item.addEventListener('click', () => {
+                item.classList.toggle('active');
+                const tipo = item.dataset.type;
+                const visible = item.classList.contains('active');
+                
+                map.setLayoutProperty(`marcadores-${tipo}`, 'visibility', visible ? 'visible' : 'none');
+                map.setLayoutProperty(`iconos-${tipo}`, 'visibility', visible ? 'visible' : 'none');
+            });
+        });
+
+        document.getElementById('heatmapToggle').addEventListener('change', (e) => {
+            map.setLayoutProperty('heatmap-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+
+        document.getElementById('markersToggle').addEventListener('change', (e) => {
+            const visible = e.target.checked ? 'visible' : 'none';
+            ['riña', 'hurto', 'homicidio', 'violencia'].forEach(tipo => {
+                map.setLayoutProperty(`marcadores-${tipo}`, 'visibility', visible);
+            });
+        });
+
+        const themeToggle = document.getElementById('themeToggle');
+        let isDarkMode = false;
+
+        themeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            themeToggle.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            
+            map.setStyle(isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v11');
+
+            map.once('styledata', () => {
+                addLayers();
+            });
+        });
+
+        function addLayers() {
+            map.addSource('incidentes', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: incidentes.map(inc => ({
+                        type: 'Feature',
+                        properties: {
+                            id: inc.id,
+                            tipo: inc.tipo,
+                            descripcion: inc.descripcion,
+                            direccion: inc.direccion,
+                            fecha: inc.fecha,
+                            gravedad: inc.gravedad
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [inc.lng, inc.lat]
+                        }
+                    }))
+                }
+            });
+
+            map.addSource('incidentes-heat', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: incidentes.map(inc => ({
+                        type: 'Feature',
+                        properties: {
+                            tipo: inc.tipo,
+                            gravedad: inc.gravedad
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [inc.lng, inc.lat]
+                        }
+                    }))
+                }
+            });
+
+            map.addLayer({
+                id: 'heatmap-layer',
+                type: 'heatmap',
+                source: 'incidentes-heat',
+                paint: {
+                    'heatmap-weight': ['interpolate', ['linear'], ['get', 'gravedad'], 1, 0.1, 5, 1],
+                    'heatmap-intensity': 1,
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0, 'rgba(0,0,255,0)',
+                        0.2, 'rgb(0,255,0)',
+                        0.4, 'rgb(255,255,0)',
+                        0.6, 'rgb(255,128,0)',
+                        0.8, 'rgb(255,0,0)',
+                        1, 'rgb(128,0,128)'
+                    ],
+                    'heatmap-radius': 30,
+                    'heatmap-opacity': 0.7
+                }
+            });
+
+            const heatmapVisible = document.getElementById('heatmapToggle').checked;
+            map.setLayoutProperty('heatmap-layer', 'visibility', heatmapVisible ? 'visible' : 'none');
+
+            ['riña', 'hurto', 'homicidio', 'violencia'].forEach(tipo => {
+                map.addLayer({
+                    id: `marcadores-${tipo}`,
+                    type: 'circle',
+                    source: 'incidentes',
+                    filter: ['==', ['get', 'tipo'], tipo],
+                    paint: {
+                        'circle-radius': 12,
+                        'circle-color': colors[tipo],
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+            });
+
+            const markersVisible = document.getElementById('markersToggle').checked ? 'visible' : 'none';
+            ['riña', 'hurto', 'homicidio', 'violencia'].forEach(tipo => {
+                map.setLayoutProperty(`marcadores-${tipo}`, 'visibility', markersVisible);
+            });
+
+            document.querySelectorAll('.legend-item').forEach(item => {
+                const tipo = item.dataset.type;
+                if (!item.classList.contains('active')) {
+                    map.setLayoutProperty(`marcadores-${tipo}`, 'visibility', 'none');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
