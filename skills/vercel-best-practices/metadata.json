@@ -1,0 +1,20 @@
+{
+  "name": "vercel-best-practices",
+  "description": "Guías de mejores prácticas para desarrollo con Vercel, Next.js y deployment",
+  "author": "Development Team",
+  "version": "1.0.0",
+  "license": "MIT",
+  "tags": ["vercel", "nextjs", "deployment", "performance", "serverless"],
+  "triggers": [
+    "vercel",
+    "nextjs", 
+    "deploy",
+    "deployment",
+    "build",
+    "vercel.json",
+    "serverless",
+    "edge",
+    "ISR",
+    "middleware"
+  ]
+}

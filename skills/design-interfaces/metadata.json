@@ -1,0 +1,28 @@
+{
+  "name": "design-interfaces",
+  "description": "Guías de mejores prácticas para diseño de interfaces de usuario",
+  "author": "Development Team",
+  "version": "1.0.0",
+  "license": "MIT",
+  "tags": ["design", "ui", "ux", "interface", "component", "accessibility", "responsive"],
+  "triggers": [
+    "design",
+    "ui",
+    "ux",
+    "interface",
+    "component",
+    "button",
+    "input",
+    "modal",
+    "form",
+    "layout",
+    "responsive",
+    "accessibility",
+    "a11y",
+    "dark mode",
+    "theme",
+    "styles",
+    "css",
+    "tailwind"
+  ]
+}
