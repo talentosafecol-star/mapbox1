@@ -1,5 +1,10 @@
 # Mapa de Incidentes de Seguridad - Medellín
 
+Prompt Previo
+Desarrollar una interfaz grafica que pueda visualizar en la ciudad de medellin eventos de riña,hurto ,homicidios y violencia intrafamiliar con etiquetas de colores y que cada evento se puede leer a traves de una ventana o pop up la hora ,fecha y resumen del evento, usa interfaces tipo ESRI o de geolocalizacion, puedes usar la imagen de referencia anexada.
+
+https://chat.z.ai/space/x1brb1m6zjw0-art
+
 Aplicación web interactiva para visualizar incidentes de seguridad ciudadana en la ciudad de Medellín, Colombia.
 
 ## Características
